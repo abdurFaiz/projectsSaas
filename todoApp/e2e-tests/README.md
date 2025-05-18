@@ -1,64 +1,159 @@
-# Open SaaS e2e Tests with Playwright
+# End-to-End Tests with Playwright
 
-These are e2e tests that are written using [Playwright](https://playwright.dev/) for the Open SaaS project. 
+This directory contains end-to-end (e2e) tests for TodoApp using [Playwright](https://playwright.dev/). These tests ensure the application works correctly from a user's perspective by simulating real user interactions.
 
-They not only serve as tests for development of the Open SaaS project, but also as reference examples for how you can implement tests for the app you build with Open SaaS as a template, if you choose to do so.
+## Test Structure
 
-## Running the tests
-### Locally
-First, make sure you've [integrated Stripe into your app](https://docs.opensaas.sh/guides/stripe-integration/). This includes  [installing the Stripe CLI and logging into it](https://docs.opensaas.sh/guides/stripe-testing/) with your Stripe account.
-
-Next, Install the test dependencies:
-```shell
-cd e2e-tests && npm install
+```
+e2e-tests/
+├── tests/                      # Test files
+│   ├── demoAppTests.spec.ts   # Demo app functionality tests
+│   ├── landingPageTests.spec.ts # Landing page tests
+│   ├── pricingPageTests.spec.ts # Pricing page tests
+│   └── utils.ts               # Shared test utilities
+├── playwright.config.ts       # Playwright configuration
+├── ci-start-app-and-db.js    # CI environment setup
+└── package.json              # Test dependencies
 ```
 
-Start your Wasp DB and leave it running:
-```shell
-cd ../app && wasp db start
-```
+## Prerequisites
 
-### Skipping Email Verification in e2e Tests
+- Node.js (16.x or higher)
+- PostgreSQL database
+- [Wasp CLI](https://wasp-lang.dev/docs/quick-start)
+- [Stripe CLI](https://stripe.com/docs/stripe-cli) (for payment-related tests)
 
-Open another terminal and start the Wasp app with the environment variable set to skip email verification in development mode:
+## Setup & Installation
 
-> [!IMPORTANT]  
-> When using the email auth method, a verification link is typically sent when a user registers. If you're using the default Dummy provider, this link is logged in the console.  
-> 
-> **However, during e2e tests, this manual step will cause the tests to hang and fail** because the link is never clicked. To prevent this, set the following environment variable when starting your app:
-
+1. Install test dependencies:
 ```bash
-cd app && SKIP_EMAIL_VERIFICATION_IN_DEV=true wasp start
+cd e2e-tests
+npm install
 ```
 
-#### What this step will do:
-- **Automated Testing:** Skipping email verification ensures e2e tests run uninterrupted.
-- **Consistent Behavior:** It guarantees login flows won’t break during automated test runs.
-- **CI/CD Pipelines:** This variable should also be set in CI pipelines to avoid test failures.
-    ```yaml
-    env:
-        SKIP_EMAIL_VERIFICATION_IN_DEV: "true"
-    ```
-
-
-In another terminal, run the local e2e tests:
-```shell
-cd e2e-tests && npm run local:e2e:start
+2. Install Playwright browsers:
+```bash
+npx playwright install
 ```
 
-This will start the tests in Playwright's UI mode, which will allow you to see and run the tests in an interactive browser environment. You should also see the Stripe events being triggered in the terminal where the tests were started.
+## Running Tests Locally
 
-To exit the local e2e tests, go back to the terminal were you started your tests and press `ctrl + c`.
+### 1. Start the Database
+```bash
+cd ../app
+wasp db start
+```
 
-## CI/CD
-
-Although the Open SaaS template does not come with an example workflow, you can find one at `.github/workflows/e2e-tests.yml` of the [remote repo](https://github.com/wasp-lang/open-saas).
-
-You can copy and paste the `.github/` directory containing the `e2e-tests.yml` workflow into the root of your own repository to run the tests as part of your CI pipeline.
+### 2. Start the Application
+In a new terminal, start the app with email verification disabled:
+```bash
+cd ../app
+SKIP_EMAIL_VERIFICATION_IN_DEV=true wasp start
+```
 
 > [!IMPORTANT]  
-> Please make sure to update the `WASP_VERSION` environment variable in the `e2e-tests.yml` file to match the version of Wasp you are using in your project.
+> Setting `SKIP_EMAIL_VERIFICATION_IN_DEV=true` is crucial for e2e tests as it bypasses email verification
+> which would otherwise cause tests to hang waiting for verification.
 
-In order for these tests to run correctly on GitHub, you need to provide the environment variables mentioned in the `e2e-tests.yml` file within your GitHub repository's "Actions" secrets so that they can be accessed by the tests.
+### 3. Run the Tests
+In a new terminal:
+```bash
+cd e2e-tests
+npm run local:e2e:start
+```
 
-Upon pushing to the repository's main branch, or creating a PR against the main branch, the tests will run in the CI/CD pipeline.
+This launches Playwright's UI mode, allowing you to:
+- View tests running in real-time
+- Debug test failures
+- Inspect test steps
+- Run individual tests or test files
+
+## Test Scripts
+
+- `npm run local:e2e:start` - Run tests in UI mode
+- `npm run test` - Run tests in headless mode
+- `npm run test:headed` - Run tests with browser visible
+- `npm run test:debug` - Run tests in debug mode
+
+## CI/CD Integration
+
+To set up CI/CD:
+
+1. Copy the GitHub Actions workflow:
+```bash
+mkdir -p ../.github/workflows
+cp /path/to/open-saas/.github/workflows/e2e-tests.yml ../.github/workflows/
+```
+
+2. Update the workflow configuration:
+- Set `WASP_VERSION` to match your project's Wasp version
+- Configure GitHub Secrets for environment variables
+
+Required GitHub Secrets:
+```
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
+DATABASE_URL
+JWT_SECRET
+```
+
+The tests will automatically run on:
+- Push to main branch
+- Pull requests targeting main branch
+
+## Test Files Overview
+
+- `demoAppTests.spec.ts` - Tests core app functionality
+- `landingPageTests.spec.ts` - Tests landing page elements and interactions
+- `pricingPageTests.spec.ts` - Tests pricing page and payment flows
+- `utils.ts` - Shared test utilities and helper functions
+
+## Best Practices
+
+1. **Test Organization**
+   - Group related tests using `describe` blocks
+   - Use clear, descriptive test names
+   - Keep tests independent and isolated
+
+2. **Page Objects**
+   - Use page object pattern for maintainable tests
+   - Encapsulate page-specific selectors and actions
+
+3. **Test Data**
+   - Use dynamic test data generation
+   - Clean up test data after tests
+   - Avoid dependencies between tests
+
+4. **Assertions**
+   - Make assertions specific and meaningful
+   - Check both positive and negative scenarios
+   - Verify visual and functional aspects
+
+## Debugging
+
+To debug failing tests:
+
+1. Run in headed mode:
+```bash
+npm run test:headed
+```
+
+2. Use debug mode:
+```bash
+npm run test:debug
+```
+
+3. Add `await page.pause()` in your test code
+
+## Contributing
+
+1. Create descriptive test files
+2. Follow existing test patterns
+3. Update documentation for new test scenarios
+4. Run tests locally before submitting PR
+
+## Additional Resources
+
+- [Playwright Documentation](https://playwright.dev/docs/intro)
+- [Wasp Testing Guide](https://wasp-lang.dev/docs/testing/e2e-tests)
+- [Stripe Testing](https://stripe.com/docs/testing)
